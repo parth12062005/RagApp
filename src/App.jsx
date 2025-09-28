@@ -5,7 +5,7 @@ import './App.css'; // We will create this file next for styling
 // --- Configuration ---
 // The URL of your FastAPI backend.
 // When you deploy, you'll change this to your backend's public URL.
-const API_URL = 'http://localhost:8000';
+const API_URL = 'ragapp-nine.vercel.app';
 
 function App() {
   const [sessions, setSessions] = useState([]);

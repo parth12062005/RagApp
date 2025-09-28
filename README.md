@@ -101,7 +101,7 @@ RagApp/
 ├─ vite.config.js          # Vite config
 └─ README.md
 ```
-
+ 
 ---
 
 ### Troubleshooting

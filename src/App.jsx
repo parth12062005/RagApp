@@ -16,6 +16,9 @@ function App() {
   const [isResizing, setIsResizing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [urlInput, setUrlInput] = useState('');
+  const [urlTitle, setUrlTitle] = useState('');
   const fileInputRef = useRef(null);
   const sidebarRef = useRef(null);
 
@@ -94,6 +97,36 @@ function App() {
     }
   };
 
+  const uploadUrl = async (url, title) => {
+    if (!url.trim()) return;
+    setIsLoading(true);
+
+    try {
+      const response = await axios.post(`${API_URL}/api/upload-url`, {
+        url: url.trim(),
+        title: title.trim() || null
+      });
+
+      const { session_id, filename } = response.data;
+      const newSession = {
+        id: session_id,
+        name: filename,
+        messages: [{ sender: 'ai', text: `Hi! I'm ready to answer questions about ${filename}.`, ts: new Date().toISOString() }],
+      };
+
+      setSessions(prevSessions => [...prevSessions, newSession]);
+      setActiveSessionId(session_id);
+      setShowUrlInput(false);
+      setUrlInput('');
+      setUrlTitle('');
+    } catch (error) {
+      console.error("Error creating session:", error);
+      alert(`Failed to create session: ${error.response?.data?.detail || error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     await uploadFile(file);
@@ -130,6 +163,13 @@ function App() {
           <div className="mobile-actions">
             <button 
               className="new-chat-mobile"
+              onClick={() => setShowUrlInput(!showUrlInput)}
+              disabled={isLoading}
+            >
+              {isLoading ? "..." : showUrlInput ? "📁" : "🔗"}
+            </button>
+            <button 
+              className="new-chat-mobile"
               onClick={() => fileInputRef.current.click()}
               disabled={isLoading}
             >
@@ -155,16 +195,63 @@ function App() {
         <div className="sidebar-content">
           {!isMobile && <h1 className="sidebar-header">RAG Chat</h1>}
           
-          <button 
-            className="upload-button" 
-            onClick={() => {
-              fileInputRef.current.click();
-              if (isMobile) setSidebarOpen(false);
-            }}
-            disabled={isLoading}
-          >
-            {isLoading ? "Processing..." : "+ New Chat"}
-          </button>
+          <div className="upload-section">
+            <div className="upload-options">
+              <button 
+                className={`upload-option ${!showUrlInput ? 'active' : ''}`}
+                onClick={() => setShowUrlInput(false)}
+                disabled={isLoading}
+              >
+                📁 File
+              </button>
+              <button 
+                className={`upload-option ${showUrlInput ? 'active' : ''}`}
+                onClick={() => setShowUrlInput(true)}
+                disabled={isLoading}
+              >
+                🔗 URL
+              </button>
+            </div>
+            
+            {!showUrlInput ? (
+              <button 
+                className="upload-button" 
+                onClick={() => {
+                  fileInputRef.current.click();
+                  if (isMobile) setSidebarOpen(false);
+                }}
+                disabled={isLoading}
+              >
+                {isLoading ? "Processing..." : "📁 Upload File"}
+              </button>
+            ) : (
+              <div className="url-input-section">
+                <input
+                  type="url"
+                  className="url-input"
+                  placeholder="Paste your URL here..."
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  disabled={isLoading}
+                />
+                <input
+                  type="text"
+                  className="title-input"
+                  placeholder="Custom title (optional)"
+                  value={urlTitle}
+                  onChange={(e) => setUrlTitle(e.target.value)}
+                  disabled={isLoading}
+                />
+                <button 
+                  className="url-submit-button"
+                  onClick={() => uploadUrl(urlInput, urlTitle)}
+                  disabled={!urlInput.trim() || isLoading}
+                >
+                  {isLoading ? "Processing..." : "🚀 Start Chat"}
+                </button>
+              </div>
+            )}
+          </div>
           
           <input 
             type="file" 

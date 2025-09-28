@@ -45,6 +45,10 @@ class ChatRequest(BaseModel):
     session_id: str
     message: str # The frontend sends a single 'message'
 
+class URLUploadRequest(BaseModel):
+    url: str
+    title: str = None
+
 # --- API Endpoints ---
 
 @app.post("/api/upload")
@@ -83,6 +87,45 @@ async def upload_file_and_create_session(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
+@app.post("/api/upload-url")
+async def upload_url_and_create_session(request: URLUploadRequest):
+    """Upload a URL and create a new session"""
+    try:
+        # Use the URL directly with Modal
+        headers = {"Authorization": f"Bearer {MODAL_API_TOKEN}"}
+        payload = {"document_url": request.url}
+        
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(MODAL_UPLOAD_URL, json=payload, headers=headers)
+            response.raise_for_status()
+            
+            modal_data = response.json()
+            session_id = modal_data.get("session_id")
+            
+            if not session_id:
+                logging.error("Modal did not return a session_id")
+                raise HTTPException(status_code=500, detail="Modal did not return a session_id")
+            
+            # Use provided title or extract from URL
+            title = request.title or request.url.split('/')[-1] or "Web Content"
+            if not title or title == "Web Content":
+                # Try to extract a better title from the URL
+                if 'github.com' in request.url:
+                    title = "GitHub Repository"
+                elif 'youtube.com' in request.url or 'youtu.be' in request.url:
+                    title = "YouTube Video"
+                elif 'medium.com' in request.url:
+                    title = "Medium Article"
+                elif 'wikipedia.org' in request.url:
+                    title = "Wikipedia Article"
+                else:
+                    title = "Web Content"
+            
+            logging.info(f"URL upload successful - Session ID: {session_id}, URL: {request.url}")
+            return {"session_id": session_id, "filename": title}
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 @app.post("/api/chat")
 async def chat_with_rag(request: ChatRequest):

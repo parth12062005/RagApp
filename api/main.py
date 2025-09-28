@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import uuid
+import uvicorn
 
 # Configure logging
 logging.basicConfig(
@@ -111,3 +112,15 @@ async def chat_with_rag(request: ChatRequest):
         error_msg = f"An error occurred with Modal: {str(e)}"
         logging.error(error_msg)
         raise HTTPException(status_code=500, detail=error_msg)
+
+# Add this at the end of the file to run with HTTPS
+if __name__ == "__main__":
+    # For development with self-signed certificate
+    # You'll need to generate SSL certificates first
+    uvicorn.run(
+        "main:app", 
+        host="0.0.0.0", 
+        port=8000, 
+        ssl_keyfile="key.pem",  # You need to generate these
+        ssl_certfile="cert.pem"  # You need to generate these
+    )

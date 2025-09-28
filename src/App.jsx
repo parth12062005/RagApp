@@ -358,12 +358,38 @@ function App() {
 function ChatBox({ session, setSessions, onRename, onDelete, isMobile }) {
   const [input, setInput] = useState('');
   const [isAiTyping, setIsAiTyping] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
 
   // Auto-scroll to the latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [session.messages]);
+
+  // Handle scroll events to show/hide scroll button
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setShowScrollButton(!isNearBottom);
+      
+      // Calculate scroll progress
+      const progress = Math.min(scrollTop / (scrollHeight - clientHeight), 1);
+      setScrollProgress(progress);
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -426,7 +452,13 @@ function ChatBox({ session, setSessions, onRename, onDelete, isMobile }) {
           </div>
         </div>
       )}
-      <div className="messages-container">
+      <div className="messages-container" ref={messagesContainerRef}>
+        {/* Scroll progress indicator */}
+        <div 
+          className="scroll-indicator" 
+          style={{ transform: `scaleX(${scrollProgress})` }}
+        />
+        
         {session.messages.map((msg, index) => (
           <div key={index} className={`message ${msg.sender}`}>
             <p>{msg.text}</p>
@@ -440,6 +472,17 @@ function ChatBox({ session, setSessions, onRename, onDelete, isMobile }) {
         ))}
         {isAiTyping && <div className="message ai typing"><span></span><span></span><span></span></div>}
         <div ref={messagesEndRef} />
+        
+        {/* Scroll to bottom button */}
+        {showScrollButton && (
+          <button 
+            className="scroll-to-bottom visible"
+            onClick={scrollToBottom}
+            title="Scroll to bottom"
+          >
+            ↓
+          </button>
+        )}
       </div>
       <form onSubmit={handleSendMessage} className="chat-form">
         <input

@@ -398,6 +398,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  scroll-behavior: smooth;
+  scroll-padding: 10px;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .session-item {
@@ -602,6 +606,9 @@ body {
   gap: 16px;
   overflow-y: auto;
   scroll-behavior: smooth;
+  scroll-padding: 20px;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .welcome-screen {
@@ -1045,6 +1052,81 @@ body {
   height: 100%;
 }
 
+/* Scroll Indicators and Progress */
+.scroll-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-color), var(--accent-hover));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+  z-index: 10;
+}
+
+.messages-container {
+  position: relative;
+}
+
+.messages-container::before {
+  content: '';
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 5;
+}
+
+.messages-container:hover::before {
+  opacity: 0.6;
+}
+
+/* Scroll to bottom button */
+.scroll-to-bottom {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  border: none;
+  color: white;
+  font-size: 1.2rem;
+  cursor: pointer;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+  transform: translateY(20px);
+  z-index: 10;
+}
+
+.scroll-to-bottom.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scroll-to-bottom:hover {
+  transform: translateY(-3px) scale(1.1);
+  box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
+}
+
+/* Momentum scrolling and enhanced mobile support */
+.session-list, .messages-container {
+  scroll-margin: 10px;
+  scroll-snap-type: y proximity;
+}
+
+.session-item, .message {
+  scroll-snap-align: start;
+}
+
 /* Enhanced mobile responsiveness */
 @media (max-width: 768px) {
   .upload-options {
@@ -1068,41 +1150,88 @@ body {
     max-width: 85%;
     padding: 14px 18px;
   }
+  
+  .scroll-to-bottom {
+    width: 45px;
+    height: 45px;
+    bottom: 15px;
+    right: 15px;
+    font-size: 1.1rem;
+  }
+  
+  /* Enhanced mobile scrolling */
+  .session-list, .messages-container {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
 }
 
-/* Scrollbar Styling */
+/* Enhanced Scrollbar Styling */
 .session-list::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 
 .session-list::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  margin: 4px 0;
 }
 
 .session-list::-webkit-scrollbar-thumb {
-  background: var(--accent-color);
-  border-radius: 3px;
+  background: linear-gradient(135deg, var(--accent-color) 0%, #6d28d9 100%);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: all 0.3s ease;
 }
 
 .session-list::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-hover);
+  background: linear-gradient(135deg, var(--accent-hover) 0%, #7c3aed 100%);
+  background-clip: content-box;
+  transform: scale(1.1);
+}
+
+.session-list::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
+  background-clip: content-box;
 }
 
 .messages-container::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 
 .messages-container::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  margin: 4px 0;
 }
 
 .messages-container::-webkit-scrollbar-thumb {
-  background: var(--accent-color);
-  border-radius: 3px;
+  background: linear-gradient(135deg, var(--accent-color) 0%, #6d28d9 100%);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: all 0.3s ease;
 }
 
 .messages-container::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-hover);
+  background: linear-gradient(135deg, var(--accent-hover) 0%, #7c3aed 100%);
+  background-clip: content-box;
+  transform: scale(1.1);
+}
+
+.messages-container::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
+  background-clip: content-box;
+}
+
+/* Firefox scrollbar styling */
+.session-list {
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-color) rgba(255, 255, 255, 0.1);
+}
+
+.messages-container {
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-color) rgba(255, 255, 255, 0.1);
 }

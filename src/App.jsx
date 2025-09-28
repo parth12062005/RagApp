@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import './App.css'; // We will create this file next for styling
+import './App.css';
 
 // --- Configuration ---
 // The URL of your FastAPI backend.
@@ -12,7 +12,56 @@ function App() {
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(320);
+  const [isResizing, setIsResizing] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const fileInputRef = useRef(null);
+  const sidebarRef = useRef(null);
+
+  // Check for mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth >= 768) {
+        setSidebarOpen(false);
+      }
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Handle sidebar resizing
+  const handleMouseDown = (e) => {
+    if (isMobile) return;
+    setIsResizing(true);
+    e.preventDefault();
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isResizing || isMobile) return;
+    const newWidth = e.clientX;
+    if (newWidth >= 250 && newWidth <= 500) {
+      setSidebarWidth(newWidth);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsResizing(false);
+  };
+
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isResizing]);
 
   const uploadFile = async (file) => {
     if (!file) return;
@@ -68,34 +117,122 @@ function App() {
 
   return (
     <div className="app-container" onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
-      <div className="sidebar">
-        <h1 className="sidebar-header">RAG Chat</h1>
-        <button 
-          className="upload-button" 
-          onClick={() => fileInputRef.current.click()}
-          disabled={isLoading}
-        >
-          {isLoading ? "Processing..." : "+ New Chat"}
-        </button>
-        <input 
-          type="file" 
-          ref={fileInputRef}
-          onChange={handleFileUpload} 
-          style={{ display: 'none' }} 
-        />
-        <div className="session-tabs">
-          {sessions.map(session => (
-            <button
-              key={session.id}
-              className={`tab ${session.id === activeSessionId ? 'active' : ''}`}
-              onClick={() => setActiveSessionId(session.id)}
+      {/* Mobile Header */}
+      {isMobile && (
+        <div className="mobile-header">
+          <button 
+            className="menu-button"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+          >
+            ☰
+          </button>
+          <h1 className="mobile-title">RAG Chat</h1>
+          <div className="mobile-actions">
+            <button 
+              className="new-chat-mobile"
+              onClick={() => fileInputRef.current.click()}
+              disabled={isLoading}
             >
-              {session.name}
+              {isLoading ? "..." : "+"}
             </button>
-          ))}
+          </div>
+        </div>
+      )}
+
+      {/* Sidebar */}
+      <div 
+        className={`sidebar ${isMobile ? (sidebarOpen ? 'open' : 'closed') : ''}`}
+        style={{ width: isMobile ? '100%' : `${sidebarWidth}px` }}
+        ref={sidebarRef}
+      >
+        {!isMobile && (
+          <div 
+            className="resize-handle"
+            onMouseDown={handleMouseDown}
+          />
+        )}
+        
+        <div className="sidebar-content">
+          {!isMobile && <h1 className="sidebar-header">RAG Chat</h1>}
+          
+          <button 
+            className="upload-button" 
+            onClick={() => {
+              fileInputRef.current.click();
+              if (isMobile) setSidebarOpen(false);
+            }}
+            disabled={isLoading}
+          >
+            {isLoading ? "Processing..." : "+ New Chat"}
+          </button>
+          
+          <input 
+            type="file" 
+            ref={fileInputRef}
+            onChange={handleFileUpload} 
+            style={{ display: 'none' }} 
+          />
+          
+          <div className="chat-instances">
+            <h3 className="instances-title">Chat Instances</h3>
+            <div className="session-list">
+              {sessions.map(session => (
+                <div
+                  key={session.id}
+                  className={`session-item ${session.id === activeSessionId ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveSessionId(session.id);
+                    if (isMobile) setSidebarOpen(false);
+                  }}
+                >
+                  <div className="session-info">
+                    <div className="session-name">{session.name}</div>
+                    <div className="session-meta">
+                      {session.messages.length} messages
+                    </div>
+                  </div>
+                  <div className="session-actions">
+                    <button 
+                      className="session-action-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const name = prompt('Rename chat', session.name);
+                        if (name && name.trim()) {
+                          setSessions(prev => prev.map(s => s.id === session.id ? { ...s, name: name.trim() } : s));
+                        }
+                      }}
+                    >
+                      ✏️
+                    </button>
+                    <button 
+                      className="session-action-btn danger"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm('Delete this chat?')) {
+                          setSessions(prev => prev.filter(s => s.id !== session.id));
+                          setActiveSessionId(prev => (prev === session.id ? (sessions.find(s => s.id !== session.id)?.id ?? null) : prev));
+                        }
+                      }}
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* Mobile Overlay */}
+      {isMobile && sidebarOpen && (
+        <div 
+          className="mobile-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Chat Window */}
       <div className="chat-window">
         {isDragging && (
           <div className="dropzone">
@@ -104,9 +241,10 @@ function App() {
         )}
         {activeSession ? (
           <ChatBox 
-            key={activeSession.id} // Add key to force re-mount on session change
+            key={activeSession.id}
             session={activeSession} 
             setSessions={setSessions}
+            isMobile={isMobile}
             onRename={(newName) => {
               setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, name: newName } : s));
             }}
@@ -127,7 +265,7 @@ function App() {
 }
 
 // A separate component for the chat logic to keep code organized
-function ChatBox({ session, setSessions, onRename, onDelete }) {
+function ChatBox({ session, setSessions, onRename, onDelete, isMobile }) {
   const [input, setInput] = useState('');
   const [isAiTyping, setIsAiTyping] = useState(false);
   const messagesEndRef = useRef(null);
@@ -186,16 +324,18 @@ function ChatBox({ session, setSessions, onRename, onDelete }) {
 
   return (
     <div className="chat-box">
-      <div className="chat-header">
-        <div className="session-title">{session.name}</div>
-        <div className="header-actions">
-          <button onClick={() => {
-            const name = prompt('Rename chat', session.name);
-            if (name && name.trim()) onRename(name.trim());
-          }}>Rename</button>
-          <button className="danger" onClick={onDelete}>Delete</button>
+      {!isMobile && (
+        <div className="chat-header">
+          <div className="session-title">{session.name}</div>
+          <div className="header-actions">
+            <button onClick={() => {
+              const name = prompt('Rename chat', session.name);
+              if (name && name.trim()) onRename(name.trim());
+            }}>Rename</button>
+            <button className="danger" onClick={onDelete}>Delete</button>
+          </div>
         </div>
-      </div>
+      )}
       <div className="messages-container">
         {session.messages.map((msg, index) => (
           <div key={index} className={`message ${msg.sender}`}>
@@ -219,7 +359,9 @@ function ChatBox({ session, setSessions, onRename, onDelete }) {
           placeholder="Ask a question about the document..."
           disabled={isAiTyping}
         />
-        <button type="submit" disabled={!input.trim() || isAiTyping}>Send</button>
+        <button type="submit" disabled={!input.trim() || isAiTyping}>
+          {isMobile ? "→" : "Send"}
+        </button>
       </form>
     </div>
   );

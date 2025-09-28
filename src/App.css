@@ -297,6 +297,17 @@ body {
   gap: 12px;
 }
 
+.url-help-text {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.url-help-text small {
+  color: rgba(226, 232, 240, 0.7);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
 .url-input, .title-input {
   width: 100%;
   padding: 14px 18px;

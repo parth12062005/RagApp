@@ -166,7 +166,7 @@ function App() {
               onClick={() => setShowUrlInput(!showUrlInput)}
               disabled={isLoading}
             >
-              {isLoading ? "..." : showUrlInput ? "📁" : "🔗"}
+              {isLoading ? "..." : showUrlInput ? "📁" : "📄"}
             </button>
             <button 
               className="new-chat-mobile"
@@ -209,7 +209,7 @@ function App() {
                 onClick={() => setShowUrlInput(true)}
                 disabled={isLoading}
               >
-                🔗 URL
+                🔗 File URL
               </button>
             </div>
             
@@ -226,10 +226,13 @@ function App() {
               </button>
             ) : (
               <div className="url-input-section">
+                <div className="url-help-text">
+                  <small>Supported formats: PDF, DOCX, DOC, TXT, RTF, ODT, PAGES, EPUB</small>
+                </div>
                 <input
                   type="url"
                   className="url-input"
-                  placeholder="Paste your URL here..."
+                  placeholder="Paste direct file URL (PDF, DOCX, etc.)..."
                   value={urlInput}
                   onChange={(e) => setUrlInput(e.target.value)}
                   disabled={isLoading}
@@ -247,7 +250,7 @@ function App() {
                   onClick={() => uploadUrl(urlInput, urlTitle)}
                   disabled={!urlInput.trim() || isLoading}
                 >
-                  {isLoading ? "Processing..." : "🚀 Start Chat"}
+                  {isLoading ? "Processing..." : "📄 Load File"}
                 </button>
               </div>
             )}

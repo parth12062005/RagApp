@@ -89,8 +89,21 @@ async def upload_file_and_create_session(file: UploadFile = File(...)):
 
 @app.post("/api/upload-url")
 async def upload_url_and_create_session(request: URLUploadRequest):
-    """Upload a URL and create a new session"""
+    """Upload a direct file URL and create a new session"""
     try:
+        # Validate that the URL points to a supported file type
+        supported_extensions = ['.pdf', '.docx', '.doc', '.txt', '.rtf', '.odt', '.pages', '.epub']
+        url_lower = request.url.lower()
+        
+        # Check if URL ends with a supported file extension
+        is_supported_file = any(url_lower.endswith(ext) for ext in supported_extensions)
+        
+        if not is_supported_file:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Unsupported file type. Supported formats: {', '.join(supported_extensions)}"
+            )
+        
         # Use the URL directly with Modal
         headers = {"Authorization": f"Bearer {MODAL_API_TOKEN}"}
         payload = {"document_url": request.url}
@@ -106,24 +119,21 @@ async def upload_url_and_create_session(request: URLUploadRequest):
                 logging.error("Modal did not return a session_id")
                 raise HTTPException(status_code=500, detail="Modal did not return a session_id")
             
-            # Use provided title or extract from URL
-            title = request.title or request.url.split('/')[-1] or "Web Content"
-            if not title or title == "Web Content":
-                # Try to extract a better title from the URL
-                if 'github.com' in request.url:
-                    title = "GitHub Repository"
-                elif 'youtube.com' in request.url or 'youtu.be' in request.url:
-                    title = "YouTube Video"
-                elif 'medium.com' in request.url:
-                    title = "Medium Article"
-                elif 'wikipedia.org' in request.url:
-                    title = "Wikipedia Article"
-                else:
-                    title = "Web Content"
+            # Extract filename from URL or use provided title
+            if request.title:
+                title = request.title
+            else:
+                # Extract filename from URL
+                filename = request.url.split('/')[-1]
+                # Remove query parameters if any
+                filename = filename.split('?')[0]
+                title = filename or "Document"
             
-            logging.info(f"URL upload successful - Session ID: {session_id}, URL: {request.url}")
+            logging.info(f"File URL upload successful - Session ID: {session_id}, URL: {request.url}")
             return {"session_id": session_id, "filename": title}
             
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 

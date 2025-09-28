@@ -5,7 +5,7 @@ import './App.css'; // We will create this file next for styling
 // --- Configuration ---
 // The URL of your FastAPI backend.
 // When you deploy, you'll change this to your backend's public URL.
-const API_URL = 'http://ec2-65-0-19-209.ap-south-1.compute.amazonaws.com:8000';
+const API_URL = 'https://affine-unflippant-bertram.ngrok-free.dev';
 
 function App() {
   const [sessions, setSessions] = useState([]);

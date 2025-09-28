@@ -11,18 +11,16 @@ function App() {
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 
-  const handleFileUpload = async (event) => {
-    const file = event.target.files[0];
+  const uploadFile = async (file) => {
     if (!file) return;
-
     setIsLoading(true);
     const formData = new FormData();
     formData.append('file', file);
 
     try {
-      // Call your backend's /api/upload endpoint
       const response = await axios.post(`${API_URL}/api/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -31,29 +29,45 @@ function App() {
       const newSession = {
         id: session_id,
         name: filename,
-        messages: [{ sender: 'ai', text: `Hi! I'm ready to answer questions about ${filename}.` }],
+        messages: [{ sender: 'ai', text: `Hi! I'm ready to answer questions about ${filename}.`, ts: new Date().toISOString() }],
       };
-      
-      // Add the new session and make it the active one
+
       setSessions(prevSessions => [...prevSessions, newSession]);
       setActiveSessionId(session_id);
-
     } catch (error) {
       console.error("Error creating session:", error);
       alert(`Failed to create session: ${error.response?.data?.detail || error.message}`);
     } finally {
       setIsLoading(false);
-      // Reset file input so you can upload the same file again
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
     }
   };
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    await uploadFile(file);
+  };
+
+  const onDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const onDragLeave = () => setIsDragging(false);
+
+  const onDrop = async (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    await uploadFile(file);
+  };
   
   const activeSession = sessions.find(s => s.id === activeSessionId);
 
   return (
-    <div className="app-container">
+    <div className="app-container" onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
       <div className="sidebar">
         <h1 className="sidebar-header">RAG Chat</h1>
         <button 
@@ -83,16 +97,28 @@ function App() {
       </div>
 
       <div className="chat-window">
+        {isDragging && (
+          <div className="dropzone">
+            <p>Drop your document to start a new chat</p>
+          </div>
+        )}
         {activeSession ? (
           <ChatBox 
             key={activeSession.id} // Add key to force re-mount on session change
             session={activeSession} 
             setSessions={setSessions}
+            onRename={(newName) => {
+              setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, name: newName } : s));
+            }}
+            onDelete={() => {
+              setSessions(prev => prev.filter(s => s.id !== activeSession.id));
+              setActiveSessionId(prev => (prev === activeSession.id ? (sessions.find(s => s.id !== activeSession.id)?.id ?? null) : prev));
+            }}
           />
         ) : (
           <div className="welcome-screen">
             <h2>Welcome to your Personal RAG Chat</h2>
-            <p>Click "+ New Chat" to upload a document and start a conversation.</p>
+            <p>Click "+ New Chat" or drag and drop a file anywhere to begin.</p>
           </div>
         )}
       </div>
@@ -101,7 +127,7 @@ function App() {
 }
 
 // A separate component for the chat logic to keep code organized
-function ChatBox({ session, setSessions }) {
+function ChatBox({ session, setSessions, onRename, onDelete }) {
   const [input, setInput] = useState('');
   const [isAiTyping, setIsAiTyping] = useState(false);
   const messagesEndRef = useRef(null);
@@ -115,7 +141,7 @@ function ChatBox({ session, setSessions }) {
     e.preventDefault();
     if (!input.trim() || isAiTyping) return;
 
-    const userMessage = { sender: 'user', text: input };
+    const userMessage = { sender: 'user', text: input, ts: new Date().toISOString() };
     
     setSessions(prevSessions => prevSessions.map(s => 
       s.id === session.id ? { ...s, messages: [...s.messages, userMessage] } : s
@@ -133,7 +159,7 @@ function ChatBox({ session, setSessions }) {
       // Handle the new response format
       if (response.data && response.data.answers && response.data.answers.length > 0) {
         const aiMessageText = response.data.answers[0];
-        const aiMessage = { sender: 'ai', text: aiMessageText };
+        const aiMessage = { sender: 'ai', text: aiMessageText, ts: new Date().toISOString() };
         
         setSessions(prevSessions => prevSessions.map(s => 
           s.id === session.id ? { ...s, messages: [...s.messages, aiMessage] } : s
@@ -146,7 +172,8 @@ function ChatBox({ session, setSessions }) {
       console.error("Error chatting:", error);
       const errorMessage = {
         sender: 'ai',
-        text: 'I apologize, but I couldn\'t process your request. Please try again.'
+        text: 'I apologize, but I couldn\'t process your request. Please try again.',
+        ts: new Date().toISOString()
       };
       
       setSessions(prevSessions => prevSessions.map(s => 
@@ -159,10 +186,26 @@ function ChatBox({ session, setSessions }) {
 
   return (
     <div className="chat-box">
+      <div className="chat-header">
+        <div className="session-title">{session.name}</div>
+        <div className="header-actions">
+          <button onClick={() => {
+            const name = prompt('Rename chat', session.name);
+            if (name && name.trim()) onRename(name.trim());
+          }}>Rename</button>
+          <button className="danger" onClick={onDelete}>Delete</button>
+        </div>
+      </div>
       <div className="messages-container">
         {session.messages.map((msg, index) => (
           <div key={index} className={`message ${msg.sender}`}>
             <p>{msg.text}</p>
+            <div className="meta">
+              <span>{new Date(msg.ts ?? Date.now()).toLocaleTimeString()}</span>
+              {msg.sender === 'ai' && (
+                <button className="copy-btn" onClick={() => navigator.clipboard.writeText(msg.text)}>Copy</button>
+              )}
+            </div>
           </div>
         ))}
         {isAiTyping && <div className="message ai typing"><span></span><span></span><span></span></div>}

@@ -195,60 +195,80 @@ function App() {
         <div className="sidebar-content">
           {!isMobile && (
             <div className="sidebar-header">
-              <div className="header-left">
-                <div className="logo">🤖</div>
-                <h1>My Chats</h1>
-              </div>
-              <button className="menu-toggle">☰</button>
+              <h1>RAG Chat</h1>
             </div>
           )}
           
-          <div className="search-section">
-            <div className="search-bar">
-              <span className="search-icon">🔍</span>
-              <input type="text" placeholder="Search" className="search-input" />
+          <div className="upload-section">
+            <div className="upload-options">
+              <button 
+                className={`upload-option ${!showUrlInput ? 'active' : ''}`}
+                onClick={() => setShowUrlInput(false)}
+                disabled={isLoading}
+              >
+                📁 File
+              </button>
+              <button 
+                className={`upload-option ${showUrlInput ? 'active' : ''}`}
+                onClick={() => setShowUrlInput(true)}
+                disabled={isLoading}
+              >
+                🔗 File URL
+              </button>
             </div>
+            
+            {!showUrlInput ? (
+              <button 
+                className="upload-button" 
+                onClick={() => {
+                  fileInputRef.current.click();
+                  if (isMobile) setSidebarOpen(false);
+                }}
+                disabled={isLoading}
+              >
+                {isLoading ? "Processing..." : "📁 Upload File"}
+              </button>
+            ) : (
+              <div className="url-input-section">
+                <div className="url-help-text">
+                  <small>Supported formats: PDF, DOCX, DOC, TXT, RTF, ODT, PAGES, EPUB</small>
+                </div>
+                <input
+                  type="url"
+                  className="url-input"
+                  placeholder="Paste direct file URL (PDF, DOCX, etc.)..."
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  disabled={isLoading}
+                />
+                <input
+                  type="text"
+                  className="title-input"
+                  placeholder="Custom title (optional)"
+                  value={urlTitle}
+                  onChange={(e) => setUrlTitle(e.target.value)}
+                  disabled={isLoading}
+                />
+                <button 
+                  className="url-submit-button"
+                  onClick={() => uploadUrl(urlInput, urlTitle)}
+                  disabled={!urlInput.trim() || isLoading}
+                >
+                  {isLoading ? "Processing..." : "📄 Load File"}
+                </button>
+              </div>
+            )}
           </div>
-
-          <div className="folders-section">
-            <div className="section-header">
-              <h3>Folders</h3>
-              <div className="section-actions">
-                <button className="action-btn">×</button>
-                <button className="action-btn">⋯</button>
-              </div>
-            </div>
-            <div className="folders-list">
-              <div className="folder-item">
-                <span className="folder-icon">📁</span>
-                <span className="folder-name">Work chats</span>
-                <button className="folder-menu">⋯</button>
-              </div>
-              <div className="folder-item">
-                <span className="folder-icon">📁</span>
-                <span className="folder-name">Life chats</span>
-                <button className="folder-menu">⋯</button>
-              </div>
-              <div className="folder-item">
-                <span className="folder-icon">📁</span>
-                <span className="folder-name">Projects chats</span>
-                <button className="folder-menu">⋯</button>
-              </div>
-              <div className="folder-item">
-                <span className="folder-icon">📁</span>
-                <span className="folder-name">Clients chats</span>
-                <button className="folder-menu">⋯</button>
-              </div>
-            </div>
-          </div>
-
-          <div className="chats-section">
-            <div className="section-header">
-              <h3>Chats</h3>
-              <div className="section-actions">
-                <button className="action-btn">×</button>
-              </div>
-            </div>
+          
+          <input 
+            type="file" 
+            ref={fileInputRef}
+            onChange={handleFileUpload} 
+            style={{ display: 'none' }} 
+          />
+          
+          <div className="chat-instances">
+            <h3 className="instances-title">Chat Instances</h3>
             <div className="session-list">
               {sessions.map(session => (
                 <div
@@ -259,39 +279,42 @@ function App() {
                     if (isMobile) setSidebarOpen(false);
                   }}
                 >
-                  <div className="session-icon">📄</div>
                   <div className="session-info">
                     <div className="session-name">{session.name}</div>
-                    <div className="session-preview">
-                      {session.messages[session.messages.length - 1]?.text?.substring(0, 50)}...
+                    <div className="session-meta">
+                      {session.messages.length} messages
                     </div>
                   </div>
-                  <button className="session-menu">⋯</button>
+                  <div className="session-actions">
+                    <button 
+                      className="session-action-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const name = prompt('Rename chat', session.name);
+                        if (name && name.trim()) {
+                          setSessions(prev => prev.map(s => s.id === session.id ? { ...s, name: name.trim() } : s));
+                        }
+                      }}
+                    >
+                      ✏️
+                    </button>
+                    <button 
+                      className="session-action-btn danger"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm('Delete this chat?')) {
+                          setSessions(prev => prev.filter(s => s.id !== session.id));
+                          setActiveSessionId(prev => (prev === session.id ? (sessions.find(s => s.id !== session.id)?.id ?? null) : prev));
+                        }
+                      }}
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
-
-          <div className="upload-section">
-            <button 
-              className="new-chat-button" 
-              onClick={() => {
-                fileInputRef.current.click();
-                if (isMobile) setSidebarOpen(false);
-              }}
-              disabled={isLoading}
-            >
-              <span className="new-chat-icon">+</span>
-              <span>New chat</span>
-            </button>
-          </div>
-          
-          <input 
-            type="file" 
-            ref={fileInputRef}
-            onChange={handleFileUpload} 
-            style={{ display: 'none' }} 
-          />
         </div>
       </div>
 
@@ -326,60 +349,8 @@ function App() {
           />
         ) : (
           <div className="welcome-screen">
-            <div className="welcome-header">
-              <div className="welcome-title">
-                <span className="back-arrow">←</span>
-                <span>Name chat</span>
-                <div className="model-badge">Chat GPT 4.4</div>
-              </div>
-              <div className="header-actions">
-                <button className="header-btn">ℹ</button>
-                <button className="header-btn">⛶</button>
-              </div>
-            </div>
-            
-            <div className="welcome-content">
-              <div className="greeting-card">
-                <div className="greeting-logo">🤖</div>
-                <h2>How can I help you today?</h2>
-                <p>This code will display a prompt asking the user for their name, and then it will display a greeting message with the name entered by the user</p>
-              </div>
-              
-              <div className="suggestion-cards">
-                <div className="suggestion-card">
-                  <div className="card-icon">📄</div>
-                  <div className="card-content">
-                    <h4>Saved Prompt Templates</h4>
-                    <p>Access your saved prompts</p>
-                  </div>
-                </div>
-                
-                <div className="suggestion-card">
-                  <div className="card-icon">🎵</div>
-                  <div className="card-content">
-                    <h4>Media Type Selection</h4>
-                    <p>Choose your media type</p>
-                  </div>
-                </div>
-                
-                <div className="suggestion-card">
-                  <div className="card-icon">🌍</div>
-                  <div className="card-content">
-                    <h4>Multilingual Support</h4>
-                    <p>Chat in multiple languages</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="content-tabs">
-                <button className="tab active">All</button>
-                <button className="tab">Text</button>
-                <button className="tab">Image</button>
-                <button className="tab">Video</button>
-                <button className="tab">Music</button>
-                <button className="tab">Analytics</button>
-              </div>
-            </div>
+            <h2>Welcome to your Personal RAG Chat</h2>
+            <p>Upload a document or paste a file URL to start chatting with your AI assistant.</p>
           </div>
         )}
       </div>
@@ -518,26 +489,16 @@ function ChatBox({ session, setSessions, onRename, onDelete, isMobile }) {
         )}
       </div>
       <form onSubmit={handleSendMessage} className="chat-form">
-        <div className="input-container">
-          <div className="input-logo">🤖</div>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your prompt here..."
-            disabled={isAiTyping}
-            className="chat-input"
-          />
-          <div className="input-actions">
-            <button type="button" className="voice-btn" title="Voice input">🎤</button>
-            <button type="submit" disabled={!input.trim() || isAiTyping} className="send-btn">
-              →
-            </button>
-          </div>
-        </div>
-        <div className="disclaimer">
-          ChatGPT can make mistakes. Consider checking important information.
-        </div>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Ask a question about the document..."
+          disabled={isAiTyping}
+        />
+        <button type="submit" disabled={!input.trim() || isAiTyping}>
+          {isMobile ? "→" : "Send"}
+        </button>
       </form>
     </div>
   );

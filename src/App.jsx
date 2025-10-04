@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown'; 
 import './App.css';
 
 // --- Configuration ---
@@ -465,7 +466,7 @@ function ChatBox({ session, setSessions, onRename, onDelete, isMobile }) {
         
         {session.messages.map((msg, index) => (
           <div key={index} className={`message ${msg.sender}`}>
-            <p>{msg.text}</p>
+            <ReactMarkdown>{msg.text}</ReactMarkdown>
             <div className="meta">
               <span>{new Date(msg.ts ?? Date.now()).toLocaleTimeString()}</span>
               {msg.sender === 'ai' && (
